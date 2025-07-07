@@ -1,3 +1,7 @@
 openai
 python-dotenv
 colorlog
+pydantic==1.10.12
+fastapi
+uvicorn[standard]
+typer
