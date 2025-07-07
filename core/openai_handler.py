@@ -1,65 +1,109 @@
 import json
+from pydantic import ValidationError
 from openai import OpenAI
 from config.config import OPENAI_API_KEY, OPENAI_MODEL
 from utils.logger import logger
+from schemas.movie_info import MovieInfo
+from storage.db_handler import salvar_historico_pesquisa, buscar_historico_salvo
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-def get_movie_insights(title: str) -> dict:
+functions = [
+    {
+        "name": "obter_detalhes_filme",
+        "description": "Retorna detalhes de um filme a partir do título.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "data_lancamento": {"type": "string", "description": "Data de lançamento do filme."},
+                "bilheteria": {"type": "string", "description": "Bilheteria aproximada em dólares."},
+                "sinopse": {"type": "string", "description": "Sinopse curta do filme."},
+                "erro": {"type": "string", "description": "Mensagem de erro, caso o filme não seja encontrado."},
+            },
+            "required": []
+        }
+    }
+]
+
+def get_movie_insights(title: str, max_retries: int = 2) -> dict:
     """
-    Consulta a OpenAI para obter informações sobre um filme.
+    Consulta a OpenAI utilizando function calling para obter informações estruturadas sobre um filme,
+    validando a resposta com Pydantic e tentando reprocessar em caso de erro.
 
     Parâmetros:
         title (str): Título do filme.
+        max_retries (int): Quantidade máxima de tentativas para reprocessar resposta inválida.
 
     Retorno:
         dict: Contendo data de lançamento, bilheteria e sinopse,
               ou mensagem de erro caso não encontre ou falhe.
     """
     logger.info(f"Iniciando consulta para o filme: {title}")
+    
+    historico = buscar_historico_salvo(title)
+    if historico:
+        logger.info(f"Resultado encontrado no histórico salvo no banco de dados para o filme '{title}'")
+        return historico
 
-    try:
-        prompt = (
-            f"Você é um assistente de cinema. Responda apenas em JSON com as seguintes informações "
-            f"sobre o filme '{title}': data de lançamento, bilheteria aproximada em dólares, "
-            f"e uma sinopse curta. O JSON deve ter os campos: data_lancamento, bilheteria, sinopse. "
-            f"Se não encontrar informações sobre o filme, responda com o seguinte JSON: "
-            f'{{"erro": "Filme não encontrado"}}'
-        )
+    prompt = (
+        f"Você é um assistente de cinema. Responda apenas em JSON com as seguintes informações "
+        f"sobre o filme '{title}': data de lançamento, bilheteria aproximada em dólares, "
+        f"e uma sinopse curta. Caso não saiba alguma dessas informações, coloque \"Desconhecido\" no campo. "
+        f"Se o filme não existir, retorne o seguinte JSON: {{\"erro\": \"Filme não encontrado\"}}."
+    )
 
-        logger.debug(f"Prompt enviado para OpenAI: {prompt}")
-
-        response = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            max_tokens=300,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7
-        )
-
-        resposta_texto = response.choices[0].message.content.strip()
-        logger.debug(f"Resposta bruta da OpenAI: {resposta_texto}")
-
+    for attempt in range(1, max_retries + 1):
         try:
-            resultado = json.loads(resposta_texto)
-        except json.JSONDecodeError:
-            logger.warning("Resposta da OpenAI não está em formato JSON válido.")
-            return {"erro": "Resposta inválida da IA. Tente novamente."}
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                functions=functions,
+                function_call={"name": "obter_detalhes_filme"},
+                temperature=0.7,
+                max_tokens=400
+            )
 
-        if "erro" in resultado:
-            logger.warning(f"Filme não encontrado: {title}")
-            return {"erro": "Filme não encontrado. Verifique o título e tente novamente."}
+            message = response.choices[0].message
 
-        campos_esperados = {"data_lancamento", "bilheteria", "sinopse"}
-        if not campos_esperados.issubset(resultado.keys()):
-            logger.warning("Resposta incompleta da IA.")
-            return {"erro": "Informações incompletas retornadas. Tente novamente."}
+            if not (message.function_call and message.function_call.arguments):
+                logger.warning("Nenhuma função chamada detectada na resposta da OpenAI.")
+                return {"erro": "Não foi possível obter informações estruturadas da IA."}
 
-        logger.info(f"Consulta bem-sucedida para o filme '{title}'")
-        return resultado
+            try:
+                dados = json.loads(message.function_call.arguments)
+            except json.JSONDecodeError:
+                logger.warning(f"Tentativa {attempt}: Resposta da OpenAI não está em JSON válido.")
+                if attempt == max_retries:
+                    return {"erro": "Resposta inválida da IA. Tente novamente."}
+                continue  
 
-    except Exception as e:
-        logger.error(f"Erro inesperado ao consultar informações do filme '{title}': {str(e)}", exc_info=True)
-        return {"erro": f"Erro ao consultar informações: {str(e)}"}
+            try:
+                movie_info = MovieInfo(**dados)
+                if movie_info.erro:
+                    logger.warning(f"Filme não encontrado: {title}")
+                    return {"erro": "Filme não encontrado. Verifique o título e tente novamente."}
+
+                logger.info(f"Consulta bem-sucedida para o filme '{title}'")
+                
+                salvar_historico_pesquisa(
+                    titulo=title,
+                    data_lancamento=movie_info.data_lancamento,
+                    bilheteria=movie_info.bilheteria,
+                    sinopse=movie_info.sinopse
+                )
+                
+                return movie_info.dict()
+
+            except ValidationError as ve:
+                logger.warning(f"Tentativa {attempt}: Erro de validação: {ve}")
+                if attempt == max_retries:
+                    return {"erro": "Resposta da IA não passou na validação. Tente novamente."}
+                continue  
+
+        except Exception as e:
+            logger.error(f"Erro inesperado na tentativa {attempt} para filme '{title}': {str(e)}", exc_info=True)
+            if attempt == max_retries:
+                return {"erro": f"Erro ao consultar informações: {str(e)}"}
+
+    return {"erro": "Falha desconhecida."}
