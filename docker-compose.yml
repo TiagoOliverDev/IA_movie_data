@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  ia-movie-insights:
+    build: .
+    container_name: ia_movie_insights
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    restart: unless-stopped
