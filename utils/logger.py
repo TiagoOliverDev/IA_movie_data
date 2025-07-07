@@ -45,4 +45,6 @@ logger = logging.getLogger("movies")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
-logger.propagate = False
+logger.propagate = True
+# logger.propagate = False
+
