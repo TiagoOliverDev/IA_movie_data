@@ -4,8 +4,12 @@ from pathlib import Path
 DB_PATH = Path("storage/history.db")
 
 
+def get_connection():
+    return sqlite3.connect(DB_PATH)
+
+
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS historico_consultas (
@@ -20,8 +24,8 @@ def init_db():
         conn.commit()
 
 
-def salvar_historico_pesquisa(titulo: str, data_lancamento: str, bilheteria: str, sinopse: str):
-    with sqlite3.connect(DB_PATH) as conn:
+def save_search_history(titulo: str, data_lancamento: str, bilheteria: str, sinopse: str):
+    with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO historico_consultas (titulo_filme, data_lancamento, bilheteria, sinopse)
@@ -30,12 +34,15 @@ def salvar_historico_pesquisa(titulo: str, data_lancamento: str, bilheteria: str
         conn.commit()
 
 
-def buscar_historico_salvo(titulo: str) -> dict | None:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT data_lancamento, bilheteria, sinopse FROM historico_consultas WHERE titulo_filme = ?", (titulo,))
-    row = cursor.fetchone()
-    conn.close()
+def consult_history_by_title(titulo: str) -> dict | None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT data_lancamento, bilheteria, sinopse
+            FROM historico_consultas
+            WHERE titulo_filme = ?
+        """, (titulo,))
+        row = cursor.fetchone()
     
     if row:
         return {
