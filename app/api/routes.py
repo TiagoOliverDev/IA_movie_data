@@ -9,7 +9,7 @@ router = APIRouter()
 def consultar_filme(req: MovieRequest):
     result = get_movie_insights(req.titulo)
 
-    if "erro" in result:
+    if isinstance(result, dict) and result.get("erro"):
         raise HTTPException(status_code=404, detail=result["erro"])
 
     return result
