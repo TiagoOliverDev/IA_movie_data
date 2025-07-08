@@ -4,7 +4,7 @@ from openai import OpenAI
 from config.config import OPENAI_API_KEY, OPENAI_MODEL
 from utils.logger import logger
 from schemas.movie_info import MovieInfo
-from storage.db_handler import salvar_historico_pesquisa, buscar_historico_salvo
+from storage.db_handler import save_search_history, consult_history_by_title
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -39,9 +39,13 @@ def get_movie_insights(title: str, max_retries: int = 2) -> dict:
         dict: Contendo data de lançamento, bilheteria e sinopse,
               ou mensagem de erro caso não encontre ou falhe.
     """
+    
+    if not title.strip():
+        raise ValueError("O título do filme não pode estar vazio.")
+    
     logger.info(f"Iniciando consulta para o filme: {title}")
     
-    historico = buscar_historico_salvo(title)
+    historico = consult_history_by_title(title)
     if historico:
         logger.info(f"Resultado encontrado no histórico salvo no banco de dados para o filme '{title}'")
         return historico
@@ -79,14 +83,15 @@ def get_movie_insights(title: str, max_retries: int = 2) -> dict:
                 continue  
 
             try:
-                movie_info = MovieInfo(**dados)
-                if movie_info.erro:
+                if "erro" in dados:
                     logger.warning(f"Filme não encontrado: {title}")
                     return {"erro": "Filme não encontrado. Verifique o título e tente novamente."}
+                
+                movie_info = MovieInfo(**dados)
 
                 logger.info(f"Consulta bem-sucedida para o filme '{title}'")
                 
-                salvar_historico_pesquisa(
+                save_search_history(
                     titulo=title,
                     data_lancamento=movie_info.data_lancamento,
                     bilheteria=movie_info.bilheteria,
