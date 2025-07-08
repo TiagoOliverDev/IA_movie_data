@@ -5,3 +5,5 @@ pydantic==1.10.12
 fastapi
 uvicorn[standard]
 typer
+pytest
+pytest-asyncio
