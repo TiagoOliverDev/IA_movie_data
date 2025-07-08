@@ -28,16 +28,20 @@ functions = [
 
 def get_movie_insights(title: str, max_retries: int = 2) -> dict:
     """
-    Consulta a OpenAI utilizando function calling para obter informações estruturadas sobre um filme,
-    validando a resposta com Pydantic e tentando reprocessar em caso de erro.
+    Consulta a OpenAI utilizando function calling para obter informações estruturadas sobre um filme.
+
+    - Se os dados já estiverem armazenados no banco (histórico), retorna-os diretamente sem consultar a OpenAI.
+    - Se não, envia um prompt à OpenAI solicitando data de lançamento, bilheteria e sinopse.
+    - Valida a resposta com Pydantic, e persiste no banco se for válida.
+    - Em caso de erro de validação, tenta novamente até o limite de tentativas.
+    - Retorna mensagens de erro apropriadas em caso de falha, título inválido ou filme não encontrado.
 
     Parâmetros:
-        title (str): Título do filme.
-        max_retries (int): Quantidade máxima de tentativas para reprocessar resposta inválida.
+        title (str): Título do filme a ser consultado.
+        max_retries (int): Quantidade máxima de tentativas em caso de falha de validação.
 
     Retorno:
-        dict: Contendo data de lançamento, bilheteria e sinopse,
-              ou mensagem de erro caso não encontre ou falhe.
+        dict: Dados estruturados do filme ou mensagem de erro.
     """
     
     if not title.strip():
