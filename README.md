@@ -1,21 +1,28 @@
 # 🎬 IA Movie Insights - OpenAI + Python
 
-Projeto simples e objetivo que utiliza **OpenAI API** para buscar informações sobre um filme com base apenas no seu **título**. Ele retorna uma resposta estruturada contendo:
+Projeto simples e objetivo que utiliza a **OpenAI API** para buscar informações sobre um filme com base apenas no seu **título**. Ele retorna uma resposta estruturada contendo:
 
 - 📅 Data de lançamento  
 - 💵 Bilheteria estimada  
 - 📝 Sinopse curta  
 
+Além disso, o projeto **armazena as consultas válidas em um banco SQLite** para evitar chamadas repetidas à API, otimizando **custos** e melhorando a **performance**.
 
 ---
 
 ## 🚀 Funcionalidades
 
 ✅ Recebe o nome de um filme  
-✅ Consulta a OpenAI (Chat Completions)  
+✅ Consulta a OpenAI (Chat Completions) com Function Calling  
+✅ Valida a resposta com Pydantic  
+✅ Salva histórico das consultas em SQLite  
+✅ Consulta o histórico antes de chamar a OpenAI  
 ✅ Retorna os dados formatados em JSON  
-✅ Possui tratamento de erros e logs  
-✅ Estrutura de projeto modular e escalável
+✅ Possui tratamento de erros e logs detalhados  
+✅ Estrutura modular e escalável  
+✅ Interface de linha de comando com Typer  
+✅ API Web com FastAPI  
+✅ Totalmente testado com Pytest  
 
 ---
 
@@ -24,26 +31,38 @@ Projeto simples e objetivo que utiliza **OpenAI API** para buscar informações 
 ```bash
 IA_movie_data/
 ├── app/
-│ └── main.py                   # Ponto de entrada do projeto
+│   └── api/
+│       └── routes.py             # Rotas da API
+│   └── main.py                   # Ponto de entrada do FastAPI
+├── cli.py                        # CLI com Typer
 ├── core/
-│ └── openai_handler.py         # Função que consulta a OpenAI
+│   └── openai_handler.py         # Integração com OpenAI + lógica de cache
 ├── config/
-│ └── config.py                 # Configurações e API Key
+│   └── config.py                 # Carrega variáveis de ambiente
+├── storage/
+│   └── db_handler.py             # Interação com banco SQLite
+├── schemas/
+│   └── movie_info.py             # Schema principal de resposta
+│   └── request.py                # Schema da requisição da API
+│   └── response.py               # Schema da resposta da API
 ├── tests/
-│ └── test_openai_handler.py    # Testes unitários básicos
+│   ├── test_openai_handler.py    # Testes da função principal
+│   ├── test_db_handler.py        # Testes do banco
+│   └── test_api.py               # Testes do endpoint da API
 ├── utils/
-│ └── logger.py                 # Logger personalizado
-├── .env                        # Armazena OPENAI_API_KEY e OPENAI_MODEL
-├── requirements.txt            # Dependências
-└── README.md                  
-```
-
+│   └── logger.py                 # Logger estruturado e colorido
+├── .env                          # Chave da OpenAI + modelo
+├── Dockerfile                    # Imagem Docker
+├── docker-compose.yml            # Orquestração Docker
+├── requirements.txt              # Dependências
+└── README.md              
 
 ## ⚙️ Como Executar o Projeto
 
 ### 🔧 Pré-requisitos
 - Python 3.11+   
 - Conta OpenAI com uma chave de API ativa
+- Docker (opcional, para executar em container)
 
 ### 1. Clone o repositório
 
@@ -67,12 +86,42 @@ source env/bin/activate  # ou env\Scripts\activate no Windows
 pip install -r requirements.txt
 ```
 
-### 4. Execute o projeto
+### 🎯 Formas de Uso
+
+
+### ✅ CLI (Linha de Comando com Typer)
+
 ```bash
-python app/main.py
+python cli.py "Titanic"
 ```
 
-### 💡 Exemplo de Uso
+### 🌐 API Web com FastAPI
+
+```bash
+python -m app.main  
+
+Acesse a documentação interativa: http://localhost:8000/docs
+```
+
+### 🐳 Executando com Docker
+
+```bash
+docker-compose up --build
+
+Acesse a documentação interativa: http://localhost:8000/docs
+```
+
+
+### 🧪 Testes Automatizados
+
+Execute todos os testes com:
+
+```bash
+pytest
+```
+
+
+### 💻 Exemplo via Código Python
 
 ```bash
 
@@ -95,35 +144,39 @@ print(resultado)
 
 ```
 
-### 🧪 Testes
-
-```bash
-
-Execute com: pytest
-
-```
 
 ### 🧩 Tecnologias Utilizadas
 
 ```bash
-OpenAI API
 
-Python 3.11
+🧠 OpenAI API
 
-Dotenv
+🐍 Python 3.11
 
-Pytest
+⚡ FastAPI
 
-Logging
+🧰 Typer
+
+🗃️ SQLite
+
+🔍 Pydantic
+
+🧪 Pytest
+
+🧾 Logging estruturado
+
+📦 Docker
+
+📁 dotenv
+
 ```
 
 
 ### ⚠️ Aviso de Segurança
 
 ```bash
-A IA pode retornar respostas inconsistentes se o título do filme for ambíguo ou desconhecido.
-
-Este projeto utiliza Chat Completions, mas pode ser adaptado para Assistants API se necessário.
+A IA pode retornar informações imprecisas, incompletas ou inconsistentes, especialmente se o título for ambíguo ou desconhecido.
+Este projeto usa Chat Completions com Function Calling, mas pode ser adaptado para a Assistants API.
 ```
 
 
