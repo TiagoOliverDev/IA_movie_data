@@ -4,7 +4,10 @@ from storage import db_handler
 
 @pytest.fixture
 def memoria_db(monkeypatch):
-    # Cria uma conexão SQLite em memória
+    """
+    Cria uma instância de banco de dados SQLite em memória para uso nos testes,
+    substituindo a conexão real pela conexão mockada com monkeypatch.
+    """
     conn = sqlite3.connect(":memory:")
     cursor = conn.cursor()
     cursor.execute("""
@@ -18,13 +21,16 @@ def memoria_db(monkeypatch):
     """)
     conn.commit()
 
-    # Monkeypatch substitui get_connection do db_handler
     monkeypatch.setattr(db_handler, "get_connection", lambda: conn)
 
     return conn
 
 
 def test_salvar_historico_pesquisa(memoria_db):
+    """
+    Verifica se a função save_search_history armazena corretamente os dados do filme
+    na tabela historico_consultas.
+    """
     db_handler.save_search_history(
         titulo="Matrix",
         data_lancamento="1999-03-31",
@@ -42,7 +48,10 @@ def test_salvar_historico_pesquisa(memoria_db):
 
 
 def test_consultar_historico_por_titulo(memoria_db):
-    # Pré-insere dado
+    """
+    Verifica se a função consult_history_by_title retorna corretamente os dados
+    de um filme previamente armazenado no histórico.
+    """
     memoria_db.cursor().execute("""
         INSERT INTO historico_consultas (titulo_filme, data_lancamento, bilheteria, sinopse)
         VALUES (?, ?, ?, ?)
@@ -53,4 +62,3 @@ def test_consultar_historico_por_titulo(memoria_db):
     assert isinstance(resultado, dict)
     assert resultado["data_lancamento"] == "1997-12-19"
     assert "romance" in resultado["sinopse"]
-

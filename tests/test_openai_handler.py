@@ -5,7 +5,10 @@ from core.openai_handler import get_movie_insights
 
 @patch("core.openai_handler.client.chat.completions.create")
 def test_get_movie_insights_success(mock_openai_call):
-    # Simula a resposta da OpenAI com function_call.arguments (em JSON)
+    """
+    Testa se get_movie_insights retorna corretamente os dados de um filme
+    quando a OpenAI responde com um JSON válido via function_call.arguments.
+    """
     mock_response = MagicMock()
     mock_response.choices = [
         MagicMock(
@@ -33,7 +36,10 @@ def test_get_movie_insights_success(mock_openai_call):
 
 @patch("core.openai_handler.client.chat.completions.create")
 def test_get_movie_insights_not_found(mock_openai_call):
-    # Simula resposta com erro do tipo filme não encontrado
+    """
+    Testa se get_movie_insights retorna uma mensagem de erro apropriada
+    quando a OpenAI informa que o filme não foi encontrado.
+    """
     mock_response = MagicMock()
     mock_response.choices = [
         MagicMock(
@@ -55,5 +61,9 @@ def test_get_movie_insights_not_found(mock_openai_call):
 
 
 def test_get_movie_insights_empty_input():
+    """
+    Testa se get_movie_insights levanta uma exceção do tipo ValueError
+    ao receber uma string vazia como título de filme.
+    """
     with pytest.raises(ValueError, match="O título do filme não pode estar vazio."):
         get_movie_insights("")

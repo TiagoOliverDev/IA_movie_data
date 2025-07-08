@@ -5,6 +5,10 @@ from app.api import routes
 
 
 def test_filme_endpoint_sucesso(monkeypatch):
+    """
+    Testa o endpoint /filme simulando um cenário de sucesso, onde a função
+    get_movie_insights retorna corretamente os dados do filme solicitado.
+    """
     mock_resultado = {
         "data_lancamento": "1997-12-19",
         "bilheteria": "$2.187 bilhões",
@@ -24,6 +28,10 @@ def test_filme_endpoint_sucesso(monkeypatch):
 
 
 def test_filme_endpoint_erro(monkeypatch):
+    """
+    Testa o endpoint /filme simulando um cenário de erro, onde a função
+    get_movie_insights retorna uma mensagem de erro indicando que o filme não foi encontrado.
+    """
     def mock_get_movie_insights(titulo):
         return {"erro": "Filme não encontrado"}
 
